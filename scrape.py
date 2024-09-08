@@ -43,36 +43,66 @@ def fetch_races(year):
 
     return races
 
-# grand_prix is a string equal to the name of the grand prix
+# grand_prix is a string equal to the name of the grand prix according to the names here https://www.formula1.com/en/results/2024/races 
+# i.e the Canadian GP is just "Canada"
 def fetch_session_results(year, grand_prix, session_type):
     race_list = fetch_races(year)
     session_types = {'race':'race-result',
                      'fastest_laps': 'fastest-laps',
                      'pit_stops':'pit-stop-summary',
                      'start_grid': 'starting-grid', 
-                     'qual': 'qualifying', 
+                     'qualifying': 'qualifying', 
                      'sprint': 'sprint-results',
                      'sprint_grid': 'sprint-grid',
-                     'sprint_qual': 'sprint-qualifying'}
+                     'sprint_qualifying': 'sprint-qualifying'}
     selected_race = {}
-    selected_session = ''
+    selected_session = session_types[session_type]
     
-
     for race in race_list:
         if race['grand_prix'] == grand_prix:
             selected_race = race
             break
-    # print(selected_race)
-    # {'race_id': '1244', 'grand_prix': 'Italy', 'date': '01 Sep 2024', 'laps': '53'}
-    selected_race_url = f'https://www.formula1.com/en/results/{year}/races/{selected_race['race_id']}/{selected_race['grand_prix']}/{session_type}'
-    soup = fetch_soup(selected_race_url)
-    # race_result_roster = soup.find_all('tr', ['bg-brand-white', 'bg-grey-10'])
 
+    selected_race_url = f'https://www.formula1.com/en/results/{year}/races/{selected_race['race_id']}/{selected_race['grand_prix']}/{selected_session}'
+    soup = fetch_soup(selected_race_url)
+    session_results = soup.find('table', ['f1-table f1-table-with-data w-full']).contents[1]
+
+    race_results =[{
+        'race_id': selected_race['race_id'],
+        'grand_prix': selected_race['grand_prix'],
+        'year': year,
+        'date_of_race': selected_race['date'],
+        'number_of_laps': selected_race['laps'],
+        'session': session_type
+    }]
+    
+    for result in session_results:
+        row = result.find_all('p', ['f1-text font-titillium tracking-normal font-normal non-italic normal-case leading-none f1-text__micro text-fs-15px'])
+        pos = row[0].text
+        driver_number = row[1].text
+        driver = row[2].text[0:len(row[2].text)-3].replace(u'\xa0', ' ')
+        driver_tag = row[2].text[len(row[2].text)-3::]
+        constructor = row[3].text
+        laps_completed = row[4].text
+        time = row[5].text
+        points = row[6].text
+        race_results.append({
+            'pos': pos,
+            'driver_number': driver_number,
+            'driver_name': driver,
+            'driver_tag': driver_tag,
+            'constructor': constructor,
+            'laps_completed': laps_completed,
+            'time': time,
+            'points': points
+        })
+    
+    return race_results
 
 def main():
-    # fetch_driver_standings(2024)
-    # print(fetch_races(1950))
-    fetch_session_results(2024, 'Italy', 'race')
+    a = fetch_session_results(2011, 'Great Britain', 'race')
+    for x in a:
+        print(x)
 
 if __name__ == '__main__':
     main()
